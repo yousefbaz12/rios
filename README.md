@@ -1,255 +1,1449 @@
 # RIOS — Research Intelligence Operating System
 
-**An experimental AI research workspace that turns a natural-language research question into a supervised, evidence-oriented workflow.**
+**An experimental AI research workspace for evidence-oriented, supervised, and self-correcting research workflows.**
 
-RIOS retrieves relevant academic papers, drafts a structured research plan, generates and runs small Python experiments, validates the resulting artifacts against explicit checks, and revises the plan when validation surfaces a missing requirement. It ships as both a command-line tool and an interactive [Chainlit](https://chainlit.io) application with live phase updates and downloadable Markdown reports.
+RIOS transforms a natural-language research question into a structured research process. It retrieves academic literature, generates an executable research plan, runs supported Python experiments, validates produced artifacts, generates actionable feedback, and revises the workflow when validation requirements are not satisfied.
 
-> [!IMPORTANT]
-> RIOS is a research prototype, not a production system. Several non-Python actions and evaluation metrics are currently simulated (see [Current Limitations](#current-limitations)), and any generated code should be treated as untrusted output, not vetted production code.
+The system is designed around a shared research state and a supervised **LangGraph orchestration architecture**.
+
+RIOS is intended for exploring:
+
+* AI-assisted scientific research
+* Stateful agent architectures
+* Automated research workflows
+* Evidence-oriented planning
+* Tool-using LLM systems
+* Feedback-driven agent correction
+* Research automation
+* Reproducible experimental workflows
+
+> **Important**
+>
+> RIOS is currently a research prototype rather than a production research platform.
+>
+> Generated Python should be considered untrusted code. The current Python executor provides bounded subprocess execution but does not provide operating-system-level sandbox isolation.
+>
+> Some non-Python research actions and scientific evaluation functions remain simplified or simulated.
 
 ---
 
 ## Table of Contents
 
-- [Why RIOS](#why-rios)
-- [How It Works](#how-it-works)
-- [Research Pipeline](#research-pipeline)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Technology Stack](#technology-stack)
-- [Reliability and Safety Measures](#reliability-and-safety-measures)
-- [Current Limitations](#current-limitations)
-- [Roadmap](#roadmap)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
+* [Why RIOS](#why-rios)
+* [Core Features](#core-features)
+* [System Architecture](#system-architecture)
+* [How RIOS Works](#how-rios-works)
+* [Research Pipeline](#research-pipeline)
+* [Self-Correction Workflow](#self-correction-workflow)
+* [Research State](#research-state)
+* [Knowledge Retrieval](#knowledge-retrieval)
+* [Research Planning](#research-planning)
+* [Experiment Execution](#experiment-execution)
+* [Validation and Feedback](#validation-and-feedback)
+* [Learning and Memory](#learning-and-memory)
+* [Interfaces](#interfaces)
+* [LLM Provider Support](#llm-provider-support)
+* [Research Reports](#research-reports)
+* [Reliability and Safety](#reliability-and-safety)
+* [Observability](#observability)
+* [Installation](#installation)
+* [Configuration](#configuration)
+* [Usage](#usage)
+* [Project Structure](#project-structure)
+* [Technology Stack](#technology-stack)
+* [Current Limitations](#current-limitations)
+* [Testing](#testing)
+* [Contributing](#contributing)
+* [License](#license)
 
 ---
 
-## Why RIOS
+# Why RIOS
 
-Most "AI research assistant" demos stop at summarizing papers or drafting an outline. RIOS instead treats a research request as a **stateful, self-correcting workflow**: it plans concrete steps, executes the ones it can (short Python experiments), checks the results against rule-based validation criteria, and loops back to replanning when something is missing — bounded by a configurable correction budget so it can't run forever.
+Many AI research assistants focus primarily on literature summarization or conversational question answering.
 
-It's built as a platform for exploring **stateful AI agents, automated research workflows, and feedback-driven LLM orchestration**, not as a drop-in replacement for a human researcher.
+RIOS explores a different architecture.
 
-## How It Works
+Instead of treating research as a single prompt-response interaction, RIOS models a research task as a **stateful computational workflow**.
 
-RIOS represents each research run as a shared, typed state (`ResearchState`) and routes it through five specialized engines via a [LangGraph](https://github.com/langchain-ai/langgraph) supervisor:
+A research request moves through several specialized stages:
 
-```mermaid
-flowchart LR
-    U[Research request] --> S[Supervisor]
-    S --> K[Knowledge Intelligence]
-    K --> S
-    S --> P[Planning Engine]
-    P --> S
-    S --> E[Execution Engine]
-    E --> S
-    S --> V[Validation Engine]
-    V -->|Issues found| P
-    V -->|Passed or budget reached| L[Learning Engine]
-    L --> R[Research report]
+```text
+Research Question
+        │
+        ▼
+Knowledge Retrieval
+        │
+        ▼
+Research Planning
+        │
+        ▼
+Experiment Execution
+        │
+        ▼
+Validation
+        │
+        ├──── Validation Failed
+        │           │
+        │           ▼
+        │       Feedback
+        │           │
+        │           ▼
+        │       Replanning
+        │           │
+        │           └────────► Re-execution
+        │
+        ▼
+Learning
+        │
+        ▼
+Research Artifacts
 ```
 
-**Normal path:**
+The important distinction is the **validation-feedback loop**.
 
+RIOS does not simply generate a plan and stop. It can inspect generated artifacts, identify missing requirements, produce structured feedback, revise the plan, and execute the updated steps again.
+
+The correction cycle remains bounded by a configurable maximum iteration count.
+
+---
+
+# Core Features
+
+## 1. End-to-End Research Workflow
+
+RIOS provides an integrated pipeline covering multiple stages of a research task.
+
+The system can:
+
+* Accept natural-language research questions
+* Retrieve related academic papers
+* Generate structured research plans
+* Select tools for individual plan steps
+* Generate Python experiments
+* Execute supported experiments
+* Capture execution outputs
+* Validate produced artifacts
+* Generate feedback from validation failures
+* Replan unsuccessful workflows
+* Store lessons from completed runs
+* Generate structured research reports
+
+This creates a workflow closer to a small research operating environment than a traditional chatbot.
+
+---
+
+## 2. Stateful Research Orchestration
+
+Every research run is represented through a shared typed state called:
+
+```python
+ResearchState
 ```
-Request → Knowledge → Planning → Execution → Validation → Learning
+
+The state moves between the different research engines.
+
+This allows separate components to operate on the same evolving research context.
+
+Typical state fields include:
+
+```text
+request
+clarified_brief
+papers
+plan
+artifacts
+feedback
+validation
+memories
+reasoning_traces
+events
+timings
+configuration
 ```
 
-**On validation failure:**
+The architecture allows later stages to inspect outputs produced by earlier stages without rebuilding the entire context.
 
+---
+
+## 3. LangGraph-Based Supervisor
+
+RIOS uses **LangGraph** to coordinate the research workflow.
+
+The supervisor determines which research engine should execute next.
+
+Typical routing follows:
+
+```text
+Knowledge
+   ↓
+Planning
+   ↓
+Execution
+   ↓
+Validation
+   ↓
+Learning
 ```
-Validation Failure → Feedback → Replanning → Re-execution
+
+Validation can modify the normal flow.
+
+If requirements are not satisfied:
+
+```text
+Validation
+   ↓
+Feedback
+   ↓
+Replanning
+   ↓
+Execution
+   ↓
+Validation
 ```
 
-The correction loop is bounded by a configured maximum, `I_max`. RIOS keeps replanning while validation hasn't passed **and** the iteration count is under that budget; once either condition flips, it moves on to the Learning phase regardless of outcome.
+This makes the workflow explicitly stateful rather than relying entirely on prompt chaining.
 
-The shared `ResearchState` carries the original request, an optional clarified brief, retrieved papers, the current plan, generated artifacts, feedback, validation results, stored memories, reasoning traces, and supervisor events across every step of the graph.
+---
 
-## Research Pipeline
+## 4. Academic Knowledge Retrieval
 
-| Phase | Responsibility |
-|---|---|
-| **Knowledge** | Searches arXiv and returns structured paper metadata. |
-| **Planning** | Uses an LLM to produce a 3–5 step executable research plan. |
-| **Execution** | Generates Python for supported steps and records code, status, stdout, and stderr. |
-| **Validation** | Applies explicit rule-based checks to accumulated artifacts and returns actionable issues. |
-| **Learning** | Stores a compact lesson from the completed validation cycle. |
+The Knowledge Engine retrieves academic literature using the arXiv API.
 
-## Installation
+Current retrieval capabilities include:
 
-**Requirements:** Python 3.11+
+* Keyword-based academic search
+* Configurable top-k results
+* Structured paper metadata
+* Title extraction
+* Author information
+* Abstract retrieval
+* Publication metadata
+* Request retry handling
+* Backoff behavior
+* Request timeouts
+* 24-hour local caching
+
+Example:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/rios.git
-cd rios
-python -m venv .venv
+rios knowledge "quantum machine learning for image classification" --top-k 5
 ```
 
-Activate the virtual environment:
+The retrieved literature becomes part of the shared research state and can subsequently inform planning.
 
-```bash
-# Linux / macOS
-source .venv/bin/activate
+---
 
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
+## 5. Structured Research Planning
+
+The Planning Engine transforms the research problem and retrieved evidence into an executable plan.
+
+A typical plan contains approximately three to five steps.
+
+Each step can describe:
+
+* Research objective
+* Required action
+* Assigned tool
+* Expected output
+* Execution requirements
+
+Example conceptual plan:
+
+```text
+1. Review retrieved literature.
+2. Define experimental assumptions.
+3. Generate a baseline experiment.
+4. Evaluate experimental results.
+5. Summarize findings.
 ```
 
-Install the package:
+The generated plan is represented using structured data rather than unrestricted text whenever possible.
 
-```bash
-python -m pip install --upgrade pip
-pip install -e .
+---
+
+## 6. Automated Python Experiment Generation
+
+RIOS can generate Python programs for supported experimental steps.
+
+The Execution Engine can:
+
+* Generate Python source code
+* Execute generated programs
+* Record execution status
+* Capture standard output
+* Capture standard error
+* Detect execution failures
+* Store produced artifacts
+* Associate results with plan steps
+
+This enables the research workflow to move beyond text generation into limited computational experimentation.
+
+---
+
+## 7. Bounded Python Execution
+
+Generated Python is executed through a bounded subprocess environment.
+
+Current safeguards include:
+
+* Per-process timeout
+* Captured standard output
+* Captured standard error
+* Output size limits
+* Failure detection
+* Controlled subprocess lifecycle
+
+The default execution timeout is intentionally small to prevent generated experiments from hanging indefinitely.
+
+> The current executor is **not an OS-level security sandbox**.
+
+RIOS should therefore be executed inside an isolated and trusted development environment.
+
+---
+
+## 8. Rule-Based Research Validation
+
+The Validation Engine examines accumulated research artifacts using explicit validation criteria.
+
+Validation can identify problems such as:
+
+* Missing experiment outputs
+* Missing required artifacts
+* Incomplete execution results
+* Missing plan requirements
+* Unsupported steps
+* Failed generated programs
+
+Instead of simply returning a Boolean result, validation can produce actionable issues.
+
+Example:
+
+```text
+Validation failed:
+
+- Experimental output was not produced.
+- The required comparison step was not executed.
+- The generated artifact does not satisfy the requested format.
 ```
 
-For development (linting, tests):
+These issues become input to the correction workflow.
 
-```bash
-pip install -e ".[dev]"
+---
+
+## 9. Self-Correcting Research Loop
+
+One of the central features of RIOS is bounded workflow correction.
+
+When validation fails, RIOS can generate feedback and revise the current research plan.
+
+```text
+Validation Failure
+        │
+        ▼
+Feedback Generation
+        │
+        ▼
+Plan Revision
+        │
+        ▼
+Re-execution
+        │
+        ▼
+Validation
 ```
 
-## Configuration
+Correction continues while:
 
-Groq is the default LLM provider. Copy the example environment file and add your key:
-
-```bash
-cp .env.example .env
+```text
+validation_passed == False
 ```
 
-```dotenv
-GROQ_API_KEY=your_api_key_here
+and:
+
+```text
+iteration < I_max
 ```
 
-To use a different provider, set `LLM_PROVIDER` along with the matching key:
+where `I_max` represents the maximum configured correction budget.
 
-```dotenv
-# OpenAI
-LLM_PROVIDER=openai
-OPENAI_API_KEY=your_api_key_here
+The loop therefore cannot continue indefinitely.
 
-# Anthropic
-LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=your_api_key_here
+---
 
-# Local Ollama (no API key needed)
-LLM_PROVIDER=ollama
-```
+## 10. Feedback-Driven Replanning
 
-> Never commit `.env` or any API key. The repository's `.gitignore` already excludes local secret files — double-check before your first commit.
+Validation issues are converted into structured feedback.
 
-## Usage
+The planner receives:
 
-### Interactive workspace
+* Previous plan
+* Validation findings
+* Failed artifact information
+* Missing requirements
+* Remaining research objectives
+
+It then creates an updated plan.
+
+This approach allows the workflow to react to execution outcomes instead of relying entirely on the original plan.
+
+---
+
+## 11. Episodic Learning
+
+After completing the validation cycle, RIOS enters a Learning phase.
+
+The Learning Engine generates a compact lesson summarizing useful information from the research run.
+
+Examples may include:
+
+* Which experiment failed
+* Which assumption was incorrect
+* Which correction improved the result
+* Which validation requirement was initially missed
+
+These lessons remain available inside the current research state.
+
+Current memory is primarily **run-level episodic memory**.
+
+It does not yet represent a persistent cross-session knowledge system.
+
+---
+
+## 12. Multi-Provider LLM Architecture
+
+RIOS includes a provider abstraction layer for multiple language model backends.
+
+Supported providers include:
+
+* Groq
+* OpenAI
+* Anthropic
+* Ollama
+
+Groq is currently the default provider.
+
+The adapter isolates provider-specific behavior from the research engines.
+
+This allows the orchestration architecture to remain mostly independent from the selected model provider.
+
+---
+
+## 13. Interactive Chainlit Workspace
+
+RIOS includes an interactive web interface built using Chainlit.
+
+Launch it with:
 
 ```bash
 rios chat --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000` and submit a research question. From the UI you can configure reasoning-trace display, clarification questions, the LLM provider, the number of papers retrieved, and the maximum self-correction iterations.
+The interface provides:
 
-### Retrieve academic papers
+* Natural-language research input
+* Live research phase updates
+* Provider configuration
+* Paper retrieval configuration
+* Maximum correction iterations
+* Optional clarification behavior
+* Optional reasoning-trace display
+* Research progress visibility
+* Downloadable Markdown reports
+
+The interface allows users to observe how a research task progresses across the internal engines.
+
+---
+
+## 14. Command-Line Interface
+
+RIOS also provides a CLI for direct experimentation and automation.
+
+Available workflows include:
 
 ```bash
-rios knowledge "retrieval-augmented generation for medical question answering" --top-k 5
+rios knowledge
 ```
 
-### Generate a research plan
+Retrieve academic papers.
 
 ```bash
-rios plan "quantum machine learning for image classification" --top-k 5
+rios plan
 ```
 
-### Run the complete pipeline
+Generate a research plan.
 
 ```bash
-rios run "deepfake detection using quantum methods" --iterations 2 --top-k 5
+rios run
 ```
 
-### Generated reports
+Execute the complete research pipeline.
 
-The Chainlit interface can export a Markdown report containing the original task and clarified brief, retrieved academic sources, the final plan, generated Python and its execution output, validation results, consolidated lessons, and per-phase timings.
+```bash
+rios chat
+```
 
-## Project Structure
+Start the interactive research workspace.
+
+This allows RIOS to operate both as an interactive application and as a command-line research tool.
+
+---
+
+## 15. Configurable Research Runs
+
+Important research settings can be changed for individual runs.
+
+Examples include:
+
+* Number of papers retrieved
+* Maximum correction iterations
+* Selected LLM provider
+* Reasoning trace visibility
+* Clarification behavior
+* Execution timeout behavior
+
+This makes the system suitable for experimenting with different agent configurations.
+
+---
+
+## 16. Research Artifact Tracking
+
+RIOS records artifacts generated throughout a research run.
+
+Artifacts may contain:
+
+* Generated Python
+* Execution output
+* Error output
+* Intermediate results
+* Validation results
+* Research plans
+* Retrieved evidence
+* Learned lessons
+
+Artifacts remain connected to the research state so downstream engines can inspect them.
+
+---
+
+## 17. Research Report Generation
+
+Interactive sessions can produce downloadable Markdown reports.
+
+A generated report can include:
+
+* Original research request
+* Clarified research brief
+* Retrieved academic papers
+* Final research plan
+* Generated Python code
+* Execution results
+* Validation findings
+* Feedback
+* Consolidated lessons
+* Reasoning traces
+* Per-phase execution timings
+
+The report provides a traceable record of how the research workflow evolved.
+
+---
+
+## 18. Execution Observability
+
+RIOS records events and timing information throughout the workflow.
+
+Observability information can include:
+
+* Current research phase
+* Phase transitions
+* Execution status
+* Validation status
+* Correction iteration number
+* Engine runtime
+* Errors
+* Reasoning events
+* Supervisor routing events
+
+This makes agent behavior easier to inspect and debug.
+
+---
+
+## 19. Retry and Cache Infrastructure
+
+External academic retrieval includes reliability mechanisms.
+
+These include:
+
+* Bounded retries
+* Request timeouts
+* Exponential backoff
+* 24-hour caching
+
+Caching reduces unnecessary calls to external academic services and improves repeated-query performance.
+
+---
+
+## 20. Concurrent Run Protection
+
+Within an interactive Chainlit session, RIOS blocks overlapping research runs.
+
+This avoids multiple pipelines simultaneously modifying the same interactive session state.
+
+---
+
+# System Architecture
+
+RIOS follows a layered architecture.
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│                        USER ACCESS                           │
+│                                                              │
+│             Chainlit UI              CLI                    │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│                LANGGRAPH SUPERVISOR                          │
+│                                                              │
+│ Knowledge → Planning → Execution → Validation → Learning     │
+│                         │                                    │
+│                         ▼                                    │
+│                Feedback + Replanning                         │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│                  SHARED RESEARCH STATE                       │
+│                                                              │
+│ request │ papers │ plan │ artifacts │ feedback │ validation │
+│ memories │ traces │ events │ timings │ configuration         │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    RESEARCH ENGINES                          │
+│                                                              │
+│ Knowledge │ Planning │ Execution │ Validation │ Learning     │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     TOOLS & SERVICES                         │
+│                                                              │
+│ arXiv │ LLM Adapter │ Python Runner │ Cache │ Reporting      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The architecture separates orchestration logic from individual research capabilities.
+
+This makes individual engines easier to modify, replace, or extend.
+
+---
+
+# How RIOS Works
+
+A typical research run begins with a question such as:
+
+```text
+Deepfake detection using quantum machine learning methods
+```
+
+RIOS then performs the following workflow.
+
+### Stage 1 — Knowledge
+
+Relevant academic papers are retrieved.
+
+```text
+Question
+   ↓
+arXiv Search
+   ↓
+Structured Paper Metadata
+```
+
+### Stage 2 — Planning
+
+The research question and retrieved papers are sent to the planning engine.
+
+```text
+Question + Evidence
+        ↓
+       LLM
+        ↓
+Structured Research Plan
+```
+
+### Stage 3 — Execution
+
+Supported steps are converted into executable Python.
+
+```text
+Plan Step
+   ↓
+Python Generation
+   ↓
+Bounded Execution
+   ↓
+Artifacts
+```
+
+### Stage 4 — Validation
+
+Generated artifacts are checked against explicit requirements.
+
+```text
+Artifacts
+    ↓
+Validation Rules
+    ↓
+Pass / Issues
+```
+
+### Stage 5 — Correction
+
+When validation fails:
+
+```text
+Issues
+  ↓
+Feedback
+  ↓
+Replanning
+  ↓
+Re-execution
+```
+
+### Stage 6 — Learning
+
+A compact lesson from the completed cycle is stored in the current research state.
+
+---
+
+# Research Pipeline
+
+| Phase          | Responsibility                                                |
+| -------------- | ------------------------------------------------------------- |
+| **Knowledge**  | Retrieve relevant academic literature and structured metadata |
+| **Planning**   | Generate a structured executable research plan                |
+| **Execution**  | Generate and execute supported Python experiments             |
+| **Validation** | Evaluate accumulated artifacts using explicit rules           |
+| **Feedback**   | Convert validation failures into actionable corrections       |
+| **Replanning** | Revise the research plan using validation feedback            |
+| **Learning**   | Store compact lessons from the completed workflow             |
+
+---
+
+# Self-Correction Workflow
+
+RIOS uses validation as a routing decision.
+
+Normal execution:
+
+```text
+Knowledge
+    ↓
+Planning
+    ↓
+Execution
+    ↓
+Validation
+    ↓
+Learning
+```
+
+Failure execution:
+
+```text
+Knowledge
+    ↓
+Planning
+    ↓
+Execution
+    ↓
+Validation
+    │
+    └── Failed
+          ↓
+       Feedback
+          ↓
+       Replanning
+          ↓
+       Execution
+          ↓
+       Validation
+```
+
+The correction process remains bounded by:
+
+```text
+I_max
+```
+
+Once the maximum iteration count is reached, the workflow exits the correction cycle and proceeds to Learning.
+
+---
+
+# Research State
+
+A central `ResearchState` object carries information between engines.
+
+Conceptually:
+
+```python
+ResearchState(
+    request=...,
+    clarified_brief=...,
+    papers=...,
+    plan=...,
+    artifacts=...,
+    feedback=...,
+    validation=...,
+    memories=...,
+    reasoning_traces=...,
+    events=...,
+    timings=...,
+    config=...
+)
+```
+
+This shared-state architecture is important because research tasks are inherently multi-stage.
+
+Each engine operates on the accumulated state rather than receiving an isolated prompt.
+
+---
+
+# Knowledge Retrieval
+
+The current Knowledge Engine uses the **arXiv Atom API**.
+
+Example:
+
+```bash
+rios knowledge \
+  "retrieval augmented generation for medical question answering" \
+  --top-k 5
+```
+
+Current retrieval features include:
+
+* Query-based paper search
+* Structured metadata
+* Configurable result count
+* Caching
+* Retry handling
+* Timeout handling
+* Backoff behavior
+
+---
+
+# Research Planning
+
+Generate a plan without executing the complete workflow:
+
+```bash
+rios plan \
+  "quantum machine learning for image classification" \
+  --top-k 5
+```
+
+The planner uses:
+
+```text
+Research Question
+       +
+Retrieved Literature
+       +
+Research Configuration
+       ↓
+       LLM
+       ↓
+Executable Research Plan
+```
+
+Planning outputs are designed to remain compact enough for downstream execution.
+
+---
+
+# Experiment Execution
+
+Execute a complete workflow:
+
+```bash
+rios run \
+  "deepfake detection using quantum methods" \
+  --iterations 2 \
+  --top-k 5
+```
+
+Supported Python-oriented steps can result in artifacts containing:
+
+```text
+Generated source code
+Execution status
+Standard output
+Standard error
+Execution timing
+```
+
+Unsupported non-Python actions are currently represented using placeholder artifacts.
+
+---
+
+# Validation and Feedback
+
+Validation provides an explicit checkpoint between execution and learning.
+
+Instead of assuming that generated output is correct, RIOS evaluates whether required artifacts have actually been produced.
+
+When problems are detected, feedback is attached to the research state.
+
+The planner can then revise its strategy using that feedback.
+
+This creates the core closed-loop behavior:
+
+```text
+Plan
+ ↓
+Execute
+ ↓
+Validate
+ ↓
+Feedback
+ ↓
+Replan
+```
+
+---
+
+# Learning and Memory
+
+The Learning Engine creates compact lessons after the validation cycle.
+
+Example conceptual lesson:
+
+```text
+The initial experiment omitted the required baseline comparison.
+Validation detected the missing artifact.
+The revised plan added the baseline before final evaluation.
+```
+
+Current memory is limited to the active research run.
+
+Persistent semantic and episodic memory across independent sessions is not currently implemented.
+
+---
+
+# Interfaces
+
+## Chainlit Web Interface
+
+Start the UI:
+
+```bash
+rios chat --host 127.0.0.1 --port 8000
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+The interface supports configuration for:
+
+* LLM provider
+* Retrieved paper count
+* Maximum correction iterations
+* Clarification behavior
+* Reasoning-trace visibility
+
+---
+
+## CLI Interface
+
+Main commands:
+
+```bash
+rios knowledge "research topic"
+```
+
+```bash
+rios plan "research topic"
+```
+
+```bash
+rios run "research topic"
+```
+
+```bash
+rios chat
+```
+
+---
+
+# LLM Provider Support
+
+Groq is the default provider.
+
+Create an environment configuration file:
+
+```bash
+cp .env.example .env
+```
+
+Configure Groq:
+
+```env
+GROQ_API_KEY=your_api_key_here
+```
+
+Use OpenAI:
+
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_api_key_here
+```
+
+Use Anthropic:
+
+```env
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_api_key_here
+```
+
+Use Ollama:
+
+```env
+LLM_PROVIDER=ollama
+```
+
+Ollama does not require a remote API key when running locally.
+
+> Never commit `.env` files or API credentials.
+
+---
+
+# Research Reports
+
+The Chainlit application can export Markdown research reports.
+
+Reports may contain:
+
+```text
+Research Request
+Clarified Brief
+Retrieved Sources
+Research Plan
+Generated Code
+Execution Results
+Validation Results
+Feedback
+Lessons Learned
+Reasoning Traces
+Phase Timings
+```
+
+This provides a portable representation of a completed research workflow.
+
+---
+
+# Reliability and Safety
+
+RIOS includes several mechanisms intended to prevent uncontrolled agent behavior.
+
+### Bounded Correction
+
+Research correction is limited by a configurable maximum number of iterations.
+
+### Execution Timeout
+
+Generated Python processes have a fixed execution timeout.
+
+### Bounded Output
+
+Subprocess output capture is restricted.
+
+### Retrieval Timeouts
+
+External literature retrieval cannot wait indefinitely.
+
+### Retry Limits
+
+External requests use bounded retries rather than unlimited retry loops.
+
+### Session Run Locking
+
+Multiple research pipelines cannot execute concurrently inside the same interactive session.
+
+### Defensive LLM Parsing
+
+Structured LLM responses are parsed defensively.
+
+Malformed structured responses can trigger one retry.
+
+### Secret Management
+
+API credentials are loaded using environment variables.
+
+`.env` files should remain excluded from version control.
+
+---
+
+# Observability
+
+RIOS records information about how research runs progress.
+
+Tracked information can include:
+
+* Engine transitions
+* Current phase
+* Execution results
+* Validation decisions
+* Correction iterations
+* Timing measurements
+* Supervisor events
+* Reasoning traces
+
+This information can support debugging, evaluation, and future analysis of agent behavior.
+
+---
+
+# Installation
+
+## Requirements
+
+```text
+Python 3.11+
+```
+
+Clone the repository:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/rios.git
+cd rios
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it.
+
+Linux or macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Upgrade pip:
+
+```bash
+python -m pip install --upgrade pip
+```
+
+Install RIOS:
+
+```bash
+pip install -e .
+```
+
+For development dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+---
+
+# Configuration
+
+Create a local environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Example:
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_api_key_here
+```
+
+Provider-specific API keys should never be committed to Git.
+
+---
+
+# Usage
+
+## Retrieve Academic Papers
+
+```bash
+rios knowledge \
+  "retrieval augmented generation for medical question answering" \
+  --top-k 5
+```
+
+---
+
+## Generate a Research Plan
+
+```bash
+rios plan \
+  "quantum machine learning for image classification" \
+  --top-k 5
+```
+
+---
+
+## Run the Complete Research Workflow
+
+```bash
+rios run \
+  "deepfake detection using quantum methods" \
+  --iterations 2 \
+  --top-k 5
+```
+
+---
+
+## Start the Interactive Workspace
+
+```bash
+rios chat --host 127.0.0.1 --port 8000
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+---
+
+# Project Structure
 
 ```text
 RIOS/
 ├── rios/
 │   ├── core/
-│   │   ├── state.py          # Shared typed research state
-│   │   └── supervisor.py     # LangGraph routing and correction loop
+│   │   ├── state.py
+│   │   └── supervisor.py
+│   │
 │   ├── tools/
-│   │   ├── arxiv_tool.py     # Cached arXiv API integration
-│   │   ├── llm_tool.py       # Multi-provider LLM adapter
-│   │   └── python_sandbox.py # Bounded subprocess execution
-│   ├── engines.py            # Research engine implementations
-│   ├── cli.py                # Command-line interface
-│   └── chat.py                # Chainlit application
+│   │   ├── arxiv_tool.py
+│   │   ├── llm_tool.py
+│   │   └── python_sandbox.py
+│   │
+│   ├── engines.py
+│   ├── cli.py
+│   └── chat.py
+│
 ├── tests/
 │   └── test_supervisor.py
+│
 ├── pyproject.toml
 └── README.md
 ```
 
-## Technology Stack
+### Core
 
-- **Python 3.11+**
-- **LangGraph** — stateful orchestration and checkpointing
-- **Chainlit** — interactive research workspace UI
-- **OpenAI-compatible SDK** — Groq, OpenAI, and Ollama providers
-- **Anthropic SDK** — when Anthropic is selected as the provider
-- **arXiv Atom API** — literature retrieval
-- **AsyncIO** — non-blocking application behavior
-- **Pytest** — offline contract and pipeline tests
+`state.py`
 
-## Reliability and Safety Measures
+Defines the shared typed `ResearchState`.
 
-- arXiv requests use bounded retries, backoff, timeouts, and a 24-hour cache.
-- LLM JSON responses are extracted defensively and retried once if malformed.
-- Research correction loops are capped by a configurable iteration budget.
-- Python subprocesses run with a default five-second timeout and bounded captured output.
-- Interactive runs have an overall timeout to prevent indefinitely hanging tasks.
-- Concurrent research runs are blocked within the same UI session.
+`supervisor.py`
 
-## Current Limitations
+Defines LangGraph routing, phase transitions, and correction logic.
 
-Being upfront about what RIOS doesn't do yet:
+### Tools
 
-- **No OS-level sandboxing.** The Python runner is a lightweight subprocess wrapper, not a security boundary — run RIOS only in an isolated, trusted development environment.
-- **Standard-library only.** Generated experiments use the Python standard library and may simulate data or results rather than using real datasets.
-- **Non-Python steps are placeholders.** Plan steps assigned to tools other than Python are represented by placeholder artifacts, not real executions.
-- **Narrow validation.** The current validator checks a limited set of rule-based criteria rather than performing genuine scientific review.
-- **No cross-session memory.** Episodic memory lives in the run state and isn't yet a persistent, cross-session knowledge base.
-- **Basic retrieval.** arXiv keyword retrieval doesn't currently include reranking, citation analysis, or full-text processing.
+`arxiv_tool.py`
 
-## Roadmap
+Handles academic paper retrieval, retries, and caching.
 
-- [ ] Replace placeholder tool actions with real dataset, repository, and container integrations.
-- [ ] Add stronger isolation for generated-code execution.
-- [ ] Introduce evidence-grounded, LLM-assisted validation rubrics.
-- [ ] Add persistent vector and episodic memory across research sessions.
-- [ ] Support full-text retrieval, citation graphs, deduplication, and semantic reranking.
-- [ ] Expand automated tests for asynchronous engines, failure paths, and UI behavior.
+`llm_tool.py`
 
-## Testing
+Provides the abstraction over supported LLM providers.
+
+`python_sandbox.py`
+
+Executes generated Python through bounded subprocesses.
+
+### Engines
+
+`engines.py`
+
+Contains the specialized research engines:
+
+```text
+Knowledge Engine
+Planning Engine
+Execution Engine
+Validation Engine
+Learning Engine
+```
+
+### Interfaces
+
+`cli.py`
+
+Implements command-line workflows.
+
+`chat.py`
+
+Implements the Chainlit research workspace.
+
+---
+
+# Technology Stack
+
+| Component             | Technology                |
+| --------------------- | ------------------------- |
+| Core Language         | Python 3.11+              |
+| Agent Orchestration   | LangGraph                 |
+| Interactive UI        | Chainlit                  |
+| Academic Retrieval    | arXiv Atom API            |
+| Default LLM           | Groq                      |
+| Additional LLMs       | OpenAI, Anthropic, Ollama |
+| Concurrent Operations | AsyncIO                   |
+| Python Execution      | Subprocess                |
+| Testing               | Pytest                    |
+| Configuration         | Environment variables     |
+| Reporting             | Markdown                  |
+
+---
+
+# Current Limitations
+
+RIOS is intentionally presented as an experimental system.
+
+## No OS-Level Python Sandbox
+
+The Python execution component uses bounded subprocess execution.
+
+It does **not** currently provide strong process isolation.
+
+Generated code should therefore only be executed inside a trusted isolated environment.
+
+---
+
+## Limited Experiment Environment
+
+Generated experiments currently focus primarily on standard-library Python.
+
+Complex machine-learning experiments requiring external datasets or large frameworks are not fully automated.
+
+---
+
+## Placeholder Non-Python Actions
+
+Research plan steps assigned to unsupported tools may currently generate placeholder artifacts instead of real actions.
+
+---
+
+## Rule-Based Validation
+
+The current validator checks explicit programmatic requirements.
+
+It should not be interpreted as genuine scientific peer review.
+
+---
+
+## Run-Level Memory
+
+Lessons are stored during the active workflow.
+
+Cross-session persistent research memory is not currently available.
+
+---
+
+## Basic Literature Retrieval
+
+Current academic retrieval primarily uses arXiv keyword search.
+
+The system does not currently provide:
+
+* Full-text retrieval
+* Semantic reranking
+* Citation graph analysis
+* Citation verification
+* Paper deduplication
+* Systematic-review-grade evidence synthesis
+
+---
+
+## Generated Results Require Human Verification
+
+Generated plans, experiments, outputs, and conclusions may contain errors.
+
+RIOS should support human researchers rather than replace scientific judgment.
+
+---
+
+# Testing
+
+Run the test suite using:
 
 ```bash
 pytest -q
 ```
 
-Tests use a fake arXiv implementation so retrieval contracts can be verified without live network access.
+Tests use a fake arXiv implementation where appropriate so core retrieval contracts can be evaluated without requiring live network access.
 
-## Contributing
+Tests currently focus on components such as:
 
-This is an experimental, actively evolving project. Issues and pull requests are welcome — please open an issue first for anything beyond a small fix so the approach can be discussed before significant work goes in.
+* Supervisor routing
+* Research-state transitions
+* Retrieval contracts
+* Correction behavior
+* Failure handling
 
-## License
+---
 
-No license has been selected yet. Add one (MIT or Apache-2.0 are common choices for projects like this) before inviting external reuse or contributions.
+# Contributing
 
-## Author
+RIOS is an experimental project exploring automated research systems and stateful AI agents.
 
-Developed as an experimental platform for exploring stateful AI agents, automated research workflows, and feedback-driven LLM orchestration.
+Contributions involving:
+
+* Research engines
+* Validation strategies
+* Retrieval systems
+* Tool integrations
+* Agent evaluation
+* Execution safety
+* Testing
+* Observability
+
+are welcome.
+
+For substantial architectural changes, opening an issue before submitting a large pull request is recommended.
+
+---
+
+# License
+
+A project license has not yet been selected.
+
+Before external reuse or distribution, consider adopting a standard open-source license such as:
+
+* MIT License
+* Apache License 2.0
+
+---
+
+# Author
+
+Developed as an experimental platform for exploring:
+
+**Stateful AI agents, automated research workflows, evidence-oriented research, tool-using language models, and feedback-driven LLM orchestration.**
