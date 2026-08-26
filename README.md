@@ -17,9 +17,13 @@ RIOS is intended for exploring:
 * Research automation
 * Reproducible experimental workflows
 
- **High level architecture**
-<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/e4581efb-df19-431a-8097-350e674939d6" />
-
+> **Important**
+>
+> RIOS is currently a research prototype rather than a production research platform.
+>
+> Generated Python should be considered untrusted code. The current Python executor provides bounded subprocess execution but does not provide operating-system-level sandbox isolation.
+>
+> Some non-Python research actions and scientific evaluation functions remain simplified or simulated.
 
 ---
 
@@ -27,6 +31,8 @@ RIOS is intended for exploring:
 
 * [Why RIOS](#why-rios)
 * [Core Features](#core-features)
+  * [Feature Walkthrough](#feature-walkthrough)
+  * [Additional Capabilities](#additional-capabilities)
 * [System Architecture](#system-architecture)
 * [How RIOS Works](#how-rios-works)
 * [Research Pipeline](#research-pipeline)
@@ -105,6 +111,121 @@ The correction cycle remains bounded by a configurable maximum iteration count.
 ---
 
 # Core Features
+
+RIOS provides a set of integrated features designed to support the complete research workflow. These features cover user interaction, research clarification, academic knowledge retrieval, structured planning, automated experiment execution, validation, and self-correction. Together, they allow a research question to progress through a supervised and evidence-oriented pipeline rather than a single AI response.
+
+---
+
+## Feature Walkthrough
+
+### Interactive Research Workspace
+
+RIOS provides an interactive research workspace where users can begin with a natural-language research question instead of manually configuring a complex pipeline. The interface offers predefined research starters while also supporting fully custom research topics.
+
+The workspace provides live visibility into the research process. Users can configure important execution settings, select the preferred LLM provider, control the number of retrieved papers, define the maximum correction iterations, and optionally enable reasoning visibility.
+
+Rather than treating the interaction as a simple chatbot conversation, RIOS uses the submitted question as the starting point for a complete structured research workflow.
+
+**Key capabilities:**
+
+* Natural-language research input
+* Ready-to-use research starters
+* Interactive Chainlit interface
+* Configurable research settings
+* Multi-provider LLM support
+* Live phase and execution updates
+* Downloadable research reports
+
+---
+
+### Intelligent Research Clarification
+
+Before executing a research workflow, RIOS can identify missing or ambiguous requirements and request targeted clarification from the user.
+
+Instead of making arbitrary assumptions, the system analyzes the initial research question and determines which details could significantly influence the research strategy. These may include the target dataset, methodological direction, evaluation criteria, model family, or experimental objective.
+
+The clarification stage improves the quality of downstream retrieval and planning by converting a broad research question into a more precise **research brief**. Users can answer the generated questions or allow RIOS to continue using reasonable defaults.
+
+This creates a balance between **human supervision** and **autonomous research execution**.
+
+**Key capabilities:**
+
+* Automatic ambiguity detection
+* Context-aware clarification questions
+* Research objective refinement
+* Dataset and evaluation selection
+* Methodology preference collection
+* Optional autonomous continuation
+* Structured clarified research brief
+
+---
+
+### Knowledge Intelligence and Research Planning
+
+RIOS automatically transforms the clarified research problem into an evidence-informed research workflow.
+
+The **Knowledge Intelligence Engine** first searches academic literature and retrieves relevant papers from arXiv. Retrieved results are represented using structured metadata so they can be used by subsequent research stages rather than simply displayed as search results.
+
+The **Planning Engine** then combines the research question, clarified requirements, and retrieved evidence to construct a structured multi-step research plan. Each step describes a concrete objective and can be associated with an appropriate execution tool.
+
+For example, a research workflow may include dataset preparation, preprocessing, model implementation, experimental evaluation, and research artifact generation.
+
+This separation between **evidence retrieval** and **execution planning** allows RIOS to build a research strategy before attempting experiments.
+
+**Knowledge Intelligence features:**
+
+* Automated academic paper retrieval
+* arXiv integration
+* Configurable top-k retrieval
+* Structured paper metadata
+* Cached academic queries
+* Retry and backoff mechanisms
+
+**Planning features:**
+
+* LLM-generated research plans
+* Structured multi-step workflows
+* Tool assignment for individual steps
+* Explicit experimental objectives
+* Plan status tracking
+* Support for later feedback-driven replanning
+
+---
+
+### Automated Python Experiment Execution
+
+RIOS can move beyond research planning by generating and executing Python experiments for supported research steps.
+
+The **Execution Engine** translates executable plan steps into Python code and runs them through a bounded subprocess environment. The generated program, execution status, standard output, standard error, and resulting artifacts are captured as part of the shared research state.
+
+This makes computational results directly available to later stages of the pipeline. The Validation Engine can inspect these artifacts and determine whether the experiment satisfies the requirements defined by the research plan.
+
+If important requirements are missing, RIOS can use the validation feedback to revise the plan and execute an updated experiment.
+
+The current research prototype supports lightweight Python experimentation. Generated results should therefore be verified before being treated as scientific evidence.
+
+**Key capabilities:**
+
+* Automatic Python code generation
+* Programmatic experiment execution
+* Sandboxed-style bounded subprocess runner
+* Execution timeout protection
+* Standard output and error capture
+* Experimental result tracking
+* Artifact storage
+* Integration with validation and self-correction
+
+Together, these features allow the workflow to progress from:
+
+```text
+Research Question → Clarification → Evidence Retrieval → Planning → Experiment Execution → Validation → Correction
+```
+
+---
+
+## Additional Capabilities
+
+The following capabilities extend and support the workflow described above, covering orchestration internals, reliability mechanisms, and operational details.
 
 ## 1. End-to-End Research Workflow
 
