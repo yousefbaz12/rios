@@ -18,6 +18,7 @@ RIOS is intended for exploring:
 * Reproducible experimental workflows
 
 # **High Level Architecure**
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/50fc3012-c4ee-424a-8b08-99a1f6a57935" />
 
 
 ---
