@@ -122,6 +122,10 @@ The workspace provides live visibility into the research process. Users can conf
 
 Rather than treating the interaction as a simple chatbot conversation, RIOS uses the submitted question as the starting point for a complete structured research workflow.
 
+<img width="1600" height="859" alt="image" src="https://github.com/user-attachments/assets/c234f597-d97d-424e-bc93-d03ac0ba6de8" />
+
+
+
 **Key capabilities:**
 
 * Natural-language research input
@@ -131,28 +135,6 @@ Rather than treating the interaction as a simple chatbot conversation, RIOS uses
 * Multi-provider LLM support
 * Live phase and execution updates
 * Downloadable research reports
-
----
-
-### Intelligent Research Clarification
-
-Before executing a research workflow, RIOS can identify missing or ambiguous requirements and request targeted clarification from the user.
-
-Instead of making arbitrary assumptions, the system analyzes the initial research question and determines which details could significantly influence the research strategy. These may include the target dataset, methodological direction, evaluation criteria, model family, or experimental objective.
-
-The clarification stage improves the quality of downstream retrieval and planning by converting a broad research question into a more precise **research brief**. Users can answer the generated questions or allow RIOS to continue using reasonable defaults.
-
-This creates a balance between **human supervision** and **autonomous research execution**.
-
-**Key capabilities:**
-
-* Automatic ambiguity detection
-* Context-aware clarification questions
-* Research objective refinement
-* Dataset and evaluation selection
-* Methodology preference collection
-* Optional autonomous continuation
-* Structured clarified research brief
 
 ---
 
@@ -185,6 +167,7 @@ This separation between **evidence retrieval** and **execution planning** allows
 * Explicit experimental objectives
 * Plan status tracking
 * Support for later feedback-driven replanning
+<img width="1600" height="824" alt="image" src="https://github.com/user-attachments/assets/a9a45dec-8dc7-4d58-ad7b-67d98c81bc5c" />
 
 ---
 
@@ -210,6 +193,9 @@ The current research prototype supports lightweight Python experimentation. Gene
 * Experimental result tracking
 * Artifact storage
 * Integration with validation and self-correction
+
+<img width="1219" height="608" alt="image" src="https://github.com/user-attachments/assets/3a79390d-52dd-4176-acde-209b5e24fc63" />
+
 
 Together, these features allow the workflow to progress from:
 
