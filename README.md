@@ -17,13 +17,9 @@ RIOS is intended for exploring:
 * Research automation
 * Reproducible experimental workflows
 
-> **Important**
->
-> RIOS is currently a research prototype rather than a production research platform.
->
-> Generated Python should be considered untrusted code. The current Python executor provides bounded subprocess execution but does not provide operating-system-level sandbox isolation.
->
-> Some non-Python research actions and scientific evaluation functions remain simplified or simulated.
+ **High level architecture**
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/e4581efb-df19-431a-8097-350e674939d6" />
+
 
 ---
 
