@@ -17,7 +17,7 @@ RIOS is intended for exploring:
 * Research automation
 * Reproducible experimental workflows
 
-**High Level Architecure**
+# **High Level Architecure**
 
 
 ---
